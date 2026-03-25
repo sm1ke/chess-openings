@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
+import { useStore } from '../store/useStore'
 
 const menuLinks = [
   { to: '/', label: 'Home' },
@@ -11,6 +12,26 @@ const menuLinks = [
 
 export function Header() {
   const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const isBoardRoute = pathname === '/train/board'
+  const trainSession = useStore((s) => s.trainSession)
+  const openings = useStore((s) => s.openings)
+
+  let boardSubtitle = ''
+  if (isBoardRoute && trainSession) {
+    if (trainSession.mode === 'single' && trainSession.openingId) {
+      const o = openings.find((x) => x.id === trainSession.openingId)
+      boardSubtitle = o?.name ?? ''
+    } else if (trainSession.mode === 'all') {
+      boardSubtitle = 'All Openings'
+    } else if (trainSession.mode === 'color' && trainSession.color) {
+      boardSubtitle = `All ${trainSession.color === 'white' ? 'White' : 'Black'} Openings`
+    } else if (trainSession.mode === 'set' && trainSession.setId) {
+      boardSubtitle = 'Set Training'
+    } else if (trainSession.mode === 'tag' && trainSession.tag) {
+      boardSubtitle = `Tag: ${trainSession.tag}`
+    }
+  }
 
   return (
     <>
@@ -26,7 +47,12 @@ export function Header() {
         >
           ☰
         </button>
-        <Link to="/" className="font-semibold no-underline" style={{ color: 'var(--chess-text)' }}>Chess Trainer</Link>
+        <div style={{ textAlign: 'center' }}>
+          <Link to="/" className="font-semibold no-underline" style={{ color: 'var(--chess-text)', display: 'block', lineHeight: 1.2 }}>Chess Trainer</Link>
+          {boardSubtitle && (
+            <span style={{ color: 'var(--chess-text-muted)', fontSize: 11, display: 'block', lineHeight: 1.2 }}>{boardSubtitle}</span>
+          )}
+        </div>
         <div style={{ width: 28 }} /> {/* spacer to center title */}
       </header>
 

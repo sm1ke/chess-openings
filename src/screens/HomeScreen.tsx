@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import type { TrainSession } from '../store/useStore'
 
 // Featured openings: name must match preloaded opening names exactly
 const FEATURED: { name: string; icon: string; color: 'white' | 'black'; hint: string }[] = [
@@ -20,18 +19,11 @@ export function HomeScreen() {
   const navigate = useNavigate()
   const openings = useStore((s) => s.openings)
   const trainSession = useStore((s) => s.trainSession)
-  const setTrainSession = useStore((s) => s.setTrainSession)
 
-  function startSingle(openingName: string, color: 'white' | 'black') {
+  function reviewOpening(openingName: string) {
     const opening = openings.find((o) => o.name === openingName)
     if (!opening) return
-    const session: TrainSession = {
-      playAs: color,
-      mode: 'single',
-      openingId: opening.id,
-    }
-    setTrainSession(session)
-    navigate('/train/board')
+    navigate(`/review?id=${opening.id}`)
   }
 
   function continueLastSession() {
@@ -115,7 +107,7 @@ export function HomeScreen() {
             return (
               <button
                 key={f.name}
-                onClick={() => startSingle(f.name, f.color)}
+                onClick={() => reviewOpening(f.name)}
                 style={{
                   ...cardBase,
                   borderTop: `3px solid ${f.color === 'white' ? '#81b64c' : '#4a90d9'}`,

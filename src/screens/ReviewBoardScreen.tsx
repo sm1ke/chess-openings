@@ -3,12 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Chessboard } from 'react-chessboard'
 import { Chess } from 'chess.js'
 import { useStore } from '../store/useStore'
+import type { TrainSession } from '../store/useStore'
 
 export function ReviewBoardScreen() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const openingId = params.get('id') ?? ''
   const openings = useStore((s) => s.openings)
+  const setTrainSession = useStore((s) => s.setTrainSession)
   const opening = openings.find((o) => o.id === openingId)
 
   const [moveIdx, setMoveIdx] = useState(-1) // -1 = starting position
@@ -48,6 +50,12 @@ export function ReviewBoardScreen() {
   const currentFen = fens.current[moveIdx + 1] ?? fens.current[0]
   const moveHistory = opening.moves.slice(0, moveIdx + 1)
 
+  function practiceOpening() {
+    const session: TrainSession = { playAs: opening!.color, mode: 'single', openingId: opening!.id }
+    setTrainSession(session)
+    navigate('/train/board')
+  }
+
   function prev() { setAutoPlay(false); setMoveIdx((i) => Math.max(-1, i - 1)) }
   function next() { setMoveIdx((i) => Math.min(total - 1, i + 1)) }
   function reset() { setAutoPlay(false); setMoveIdx(-1) }
@@ -59,12 +67,13 @@ export function ReviewBoardScreen() {
     padding: '10px 12px',
   }
 
-  // Parse markdown-lite description (bold **text**)
+  // Parse markdown-lite description (bold **text**, paragraphs on \n or \n\n)
   function renderDesc(text: string) {
-    return text.split('\n\n').map((para, i) => {
+    const paras = text.split(/\n\n|\n/).filter(Boolean)
+    return paras.map((para, i) => {
       const parts = para.split(/\*\*(.+?)\*\*/g)
       return (
-        <p key={i} style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.6, color: 'var(--chess-text)' }}>
+        <p key={i} style={{ margin: '0 0 8px', fontSize: 13, lineHeight: 1.6, color: 'var(--chess-text)' }}>
           {parts.map((part, j) =>
             j % 2 === 1
               ? <strong key={j} style={{ color: 'var(--chess-accent)' }}>{part}</strong>
@@ -84,14 +93,8 @@ export function ReviewBoardScreen() {
 
   return (
     <div ref={outerRef} className="flex flex-col" style={{ overflow: 'hidden' }}>
-      {/* Opening name */}
-      <div style={{ ...panelStyle, borderTop: 'none' }}>
-        <p style={{ color: 'var(--chess-text-muted)', fontSize: 11, margin: 0 }}>Reviewing</p>
-        <p style={{ color: 'var(--chess-text)', fontSize: 14, fontWeight: 600, margin: '2px 0 0' }}>{opening.name}</p>
-      </div>
-
       {/* Board */}
-      <div ref={boardWrapRef} style={{ width: 'min(100%, calc(100svh - 340px))', alignSelf: 'center', flexShrink: 0, position: 'relative' }}>
+      <div ref={boardWrapRef} style={{ width: 'min(100%, calc(100svh - 290px))', alignSelf: 'center', flexShrink: 0, position: 'relative' }}>
         <Chessboard
           options={{
             position: currentFen,
@@ -179,13 +182,19 @@ export function ReviewBoardScreen() {
         </div>
       )}
 
-      {/* Back button */}
-      <div style={{ ...panelStyle, borderBottom: 'none' }}>
+      {/* Back + Practice buttons */}
+      <div style={{ ...panelStyle, borderBottom: 'none', display: 'flex', gap: 8 }}>
         <button
           onClick={() => navigate(-1)}
           style={{ border: 'none', borderRadius: 4, cursor: 'pointer', background: 'var(--chess-border)', color: 'var(--chess-text)', padding: '8px 16px', fontSize: 13 }}
         >
           ← Back
+        </button>
+        <button
+          onClick={practiceOpening}
+          style={{ flex: 1, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'var(--chess-accent)', color: '#fff', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}
+        >
+          ▶ Practice This Opening
         </button>
       </div>
     </div>

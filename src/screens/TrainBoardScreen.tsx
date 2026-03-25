@@ -225,16 +225,8 @@ export function TrainBoardScreen() {
 
   return (
     <div ref={outerRef} className="flex flex-col" style={{ overflow: 'hidden' }}>
-      {/* Opponent info */}
-      <div style={{ ...panelStyle, borderTop: 'none' }}>
-        <p style={{ color: 'var(--chess-text-muted)', fontSize: 11, margin: 0 }}>Opponent</p>
-        <p style={{ color: 'var(--chess-text)', fontSize: 13, margin: '2px 0 0', fontWeight: 500 }}>
-          {currentOpening?.name ?? ''}
-        </p>
-      </div>
-
       {/* Board — constrained to fit within viewport height */}
-      <div ref={boardWrapRef} style={{ position: 'relative', width: 'min(100%, calc(100svh - 290px))', alignSelf: 'center', flexShrink: 0 }}>
+      <div ref={boardWrapRef} style={{ position: 'relative', width: 'min(100%, calc(100svh - 200px))', alignSelf: 'center', flexShrink: 0 }}>
         <Chessboard
           options={{
             position: fen,
@@ -263,11 +255,6 @@ export function TrainBoardScreen() {
             <span className="overlay-icon" style={{ fontSize: 80, lineHeight: 1 }}>✓</span>
           </div>
         )}
-      </div>
-
-      {/* Player info */}
-      <div style={panelStyle}>
-        <p style={{ color: 'var(--chess-text-muted)', fontSize: 11, margin: 0 }}>You ({playAs})</p>
       </div>
 
       {/* Feedback / move list */}
