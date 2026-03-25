@@ -61,13 +61,28 @@ export const useStore = create<StoreState>((set, get) => ({
 
     let openings = await adapter.getOpenings()
 
+    const preloaded = getPreloadedOpenings()
+
     // Seed preloaded openings on first run
     if (openings.length === 0) {
-      const preloaded = getPreloadedOpenings()
       for (const o of preloaded) {
         await adapter.saveOpening(o)
       }
       openings = preloaded
+    } else {
+      // Backfill descriptions onto preloaded openings that don't have one yet
+      const updated: typeof openings = []
+      for (const o of openings) {
+        const pre = preloaded.find((p) => p.name === o.name && !o.description)
+        if (pre?.description) {
+          const patched = { ...o, description: pre.description }
+          await adapter.saveOpening(patched)
+          updated.push(patched)
+        } else {
+          updated.push(o)
+        }
+      }
+      openings = updated
     }
 
     const [sets, progress] = await Promise.all([

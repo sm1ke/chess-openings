@@ -16,6 +16,7 @@ export function EditOpeningModal({ opening, onClose }: Props) {
   const [name, setName] = useState(opening.name)
   const [color, setColor] = useState(opening.color)
   const [tags, setTags] = useState<Tag[]>(opening.tags)
+  const [description, setDescription] = useState(opening.description ?? '')
   const [confirming, setConfirming] = useState(false)
 
   function toggleTag(t: Tag) {
@@ -23,7 +24,7 @@ export function EditOpeningModal({ opening, onClose }: Props) {
   }
 
   async function handleSave() {
-    await updateOpening({ ...opening, name, color, tags })
+    await updateOpening({ ...opening, name, color, tags, description: description.trim() || undefined })
     onClose()
   }
 
@@ -83,6 +84,24 @@ export function EditOpeningModal({ opening, onClose }: Props) {
               {t}
             </button>
           ))}
+        </div>
+
+        {/* Description */}
+        <div>
+          <p style={{ color: 'var(--chess-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 6px' }}>
+            Opening Guide (optional)
+          </p>
+          <textarea
+            rows={5}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Why it's good, why it's tricky, long-term goals…"
+            style={{
+              width: '100%', background: 'var(--chess-bg)', color: 'var(--chess-text)',
+              border: '1px solid var(--chess-border)', borderRadius: 4,
+              padding: 8, fontSize: 12, resize: 'vertical', fontFamily: 'inherit',
+            }}
+          />
         </div>
 
         <button

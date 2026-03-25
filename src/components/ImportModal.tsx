@@ -15,6 +15,7 @@ export function ImportModal({ onClose }: Props) {
   const [pgn, setPgn] = useState('')
   const [color, setColor] = useState<'white' | 'black'>('white')
   const [tags, setTags] = useState<Tag[]>([])
+  const [description, setDescription] = useState('')
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -32,7 +33,7 @@ export function ImportModal({ onClose }: Props) {
 
   async function handleImport() {
     setError('')
-    const openings = parsePgn(pgn, { color, tags })
+    const openings = parsePgn(pgn, { color, tags }).map((o) => ({ ...o, description: description.trim() || undefined }))
     if (openings.length === 0) {
       setError('No valid openings found. Check your PGN.')
       return
@@ -96,6 +97,19 @@ export function ImportModal({ onClose }: Props) {
             background: 'var(--chess-bg)', color: 'var(--chess-text)',
             border: '1px solid var(--chess-border)', borderRadius: 4,
             padding: 8, fontFamily: 'monospace', fontSize: 12, resize: 'vertical',
+          }}
+        />
+
+        {/* Description */}
+        <textarea
+          rows={3}
+          placeholder="Opening guide (optional): why it's good, key goals…"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          style={{
+            background: 'var(--chess-bg)', color: 'var(--chess-text)',
+            border: '1px solid var(--chess-border)', borderRadius: 4,
+            padding: 8, fontFamily: 'inherit', fontSize: 12, resize: 'vertical',
           }}
         />
 

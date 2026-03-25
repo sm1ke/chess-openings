@@ -7,6 +7,7 @@ export interface Opening {
   pgn: string
   tags: Tag[]
   moves: string[]
+  description?: string
 }
 
 export interface OpeningSet {

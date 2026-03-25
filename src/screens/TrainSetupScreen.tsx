@@ -217,6 +217,22 @@ export function TrainSetupScreen() {
       >
         Start Training {count > 0 && `(${count} opening${count !== 1 ? 's' : ''})`}
       </button>
+
+      {/* Review button — only for single opening */}
+      {mode === 'single' && openingId && (
+        <button
+          onClick={() => navigate(`/review?id=${openingId}`)}
+          style={{
+            ...btn,
+            background: 'transparent',
+            border: '1px solid var(--chess-border)',
+            color: 'var(--chess-text)',
+            padding: '12px', fontSize: 14, borderRadius: 8,
+          }}
+        >
+          📖 Review This Opening
+        </button>
+      )}
     </div>
   )
 }

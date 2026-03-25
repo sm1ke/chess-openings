@@ -7,6 +7,7 @@ import { LibraryScreen } from './screens/LibraryScreen'
 import { SetsScreen } from './screens/SetsScreen'
 import { TrainSetupScreen } from './screens/TrainSetupScreen'
 import { TrainBoardScreen } from './screens/TrainBoardScreen'
+import { ReviewBoardScreen } from './screens/ReviewBoardScreen'
 import { StatsScreen } from './screens/StatsScreen'
 import { useStore } from './store/useStore'
 
@@ -27,6 +28,7 @@ function AppShell() {
           <Route path="/sets" element={<SetsScreen />} />
           <Route path="/train" element={<TrainSetupScreen />} />
           <Route path="/train/board" element={<TrainBoardScreen />} />
+          <Route path="/review" element={<ReviewBoardScreen />} />
           <Route path="/stats" element={<StatsScreen />} />
         </Routes>
       </main>
