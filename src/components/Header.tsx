@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 
 const menuLinks = [
+  { to: '/', label: 'Home' },
   { to: '/library', label: 'Library' },
   { to: '/sets', label: 'Sets' },
   { to: '/train', label: 'Train' },
@@ -25,7 +26,7 @@ export function Header() {
         >
           ☰
         </button>
-        <span className="font-semibold" style={{ color: 'var(--chess-text)' }}>Chess Trainer</span>
+        <Link to="/" className="font-semibold no-underline" style={{ color: 'var(--chess-text)' }}>Chess Trainer</Link>
         <div style={{ width: 28 }} /> {/* spacer to center title */}
       </header>
 
