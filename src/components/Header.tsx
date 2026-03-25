@@ -8,6 +8,7 @@ const menuLinks = [
   { to: '/sets', label: 'Sets' },
   { to: '/train', label: 'Train' },
   { to: '/stats', label: 'Stats' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 export function Header() {

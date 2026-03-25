@@ -12,13 +12,12 @@ type SquareHandlerArgs = { piece: unknown; square: string }
 
 type Phase = 'playing' | 'wrong' | 'complete' | 'alldone'
 
-const HINT_DELAY = 4000
-
 export function TrainBoardScreen() {
   const navigate = useNavigate()
   const trainSession = useStore((s) => s.trainSession)
   const resolveTrainOpenings = useStore((s) => s.resolveTrainOpenings)
   const recordAttempt = useStore((s) => s.recordAttempt)
+  const hintSettings = useStore((s) => s.hintSettings)
 
   const sessionOpenings = useRef<Opening[]>([])
   const tree = useRef<Map<string, string[]>>(new Map())
@@ -34,7 +33,9 @@ export function TrainBoardScreen() {
   const [wrongInfo, setWrongInfo] = useState<{ played: string; correct: string[] } | null>(null)
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null)
   const [hintMoves, setHintMoves] = useState<string[]>([])
+  const [hintArrows, setHintArrows] = useState<Arrow[]>([])
   const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const arrowHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const furthestMove = useRef(0)
   const selectedSq = useRef<string | null>(null)
 
@@ -57,9 +58,11 @@ export function TrainBoardScreen() {
     setWrongInfo(null)
     setLastMove(null)
     setHintMoves([])
+    setHintArrows([])
     furthestMove.current = 0
     selectedSq.current = null
     if (hintTimer.current) clearTimeout(hintTimer.current)
+    if (arrowHintTimer.current) clearTimeout(arrowHintTimer.current)
   }, [chess])
 
   useEffect(() => { resetBoard() }, [openingIdx]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,16 +88,40 @@ export function TrainBoardScreen() {
     return () => clearTimeout(timeout)
   }) // intentionally runs every render
 
-  // Hint timer
+  // Hint timers (square + arrow)
   useEffect(() => {
     if (phase !== 'playing') return
     const isMyTurn = chess.turn() === (playAs === 'white' ? 'w' : 'b')
-    if (!isMyTurn) return
+    if (!isMyTurn) { setHintMoves([]); setHintArrows([]); return }
+
     if (hintTimer.current) clearTimeout(hintTimer.current)
-    hintTimer.current = setTimeout(() => {
-      setHintMoves(tree.current.get(chess.fen()) ?? [])
-    }, HINT_DELAY)
-    return () => { if (hintTimer.current) clearTimeout(hintTimer.current) }
+    if (arrowHintTimer.current) clearTimeout(arrowHintTimer.current)
+
+    if (hintSettings.squareEnabled) {
+      hintTimer.current = setTimeout(() => {
+        setHintMoves(tree.current.get(chess.fen()) ?? [])
+      }, hintSettings.squareDelay * 1000)
+    }
+
+    if (hintSettings.arrowEnabled) {
+      arrowHintTimer.current = setTimeout(() => {
+        const moves = tree.current.get(chess.fen()) ?? []
+        const tmp = new Chess(chess.fen())
+        const computed: Arrow[] = []
+        for (const san of moves) {
+          try {
+            const m = tmp.move(san)
+            if (m) { computed.push({ startSquare: m.from, endSquare: m.to, color: '#4a90d9' }); tmp.undo() }
+          } catch { /* skip */ }
+        }
+        setHintArrows(computed)
+      }, hintSettings.arrowDelay * 1000)
+    }
+
+    return () => {
+      if (hintTimer.current) clearTimeout(hintTimer.current)
+      if (arrowHintTimer.current) clearTimeout(arrowHintTimer.current)
+    }
   }, [fen, phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleComplete() {
@@ -120,7 +147,9 @@ export function TrainBoardScreen() {
       setLastMove({ from: result.from, to: result.to })
       setFen(chess.fen())
       setHintMoves([])
+      setHintArrows([])
       if (hintTimer.current) clearTimeout(hintTimer.current)
+      if (arrowHintTimer.current) clearTimeout(arrowHintTimer.current)
       // Check if complete (no more user continuations after opponent's upcoming move)
       return true
     } else {
@@ -180,7 +209,7 @@ export function TrainBoardScreen() {
     }
   }
 
-  // Arrows for correct moves on wrong
+  // Arrows: wrong-move correct answers + hint arrows
   const arrows: Arrow[] = []
   if (phase === 'wrong' && wrongInfo) {
     const tmp = new Chess(chess.fen())
@@ -190,6 +219,8 @@ export function TrainBoardScreen() {
         if (m) { arrows.push({ startSquare: m.from, endSquare: m.to, color: '#82b84c' }); tmp.undo() }
       } catch { /* skip */ }
     }
+  } else if (phase === 'playing' && hintArrows.length > 0) {
+    arrows.push(...hintArrows)
   }
 
   const moveHistory = chess.history()

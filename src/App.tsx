@@ -9,6 +9,7 @@ import { TrainSetupScreen } from './screens/TrainSetupScreen'
 import { TrainBoardScreen } from './screens/TrainBoardScreen'
 import { ReviewBoardScreen } from './screens/ReviewBoardScreen'
 import { StatsScreen } from './screens/StatsScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
 import { useStore } from './store/useStore'
 
 function AppShell() {
@@ -31,6 +32,7 @@ function AppShell() {
           <Route path="/train/board" element={<TrainBoardScreen />} />
           <Route path="/review" element={<ReviewBoardScreen />} />
           <Route path="/stats" element={<StatsScreen />} />
+          <Route path="/settings" element={<SettingsScreen />} />
         </Routes>
       </main>
       {!hideBottomNav && <BottomNav />}

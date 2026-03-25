@@ -6,6 +6,28 @@ import { getPreloadedOpenings } from '../data/preloadedOpenings'
 
 export type SelectionMode = 'single' | 'set' | 'color' | 'all' | 'tag'
 
+export interface HintSettings {
+  squareEnabled: boolean
+  squareDelay: number  // seconds
+  arrowEnabled: boolean
+  arrowDelay: number   // seconds
+}
+
+const DEFAULT_HINTS: HintSettings = {
+  squareEnabled: true,
+  squareDelay: 4,
+  arrowEnabled: false,
+  arrowDelay: 8,
+}
+
+function loadHintSettings(): HintSettings {
+  try {
+    const raw = localStorage.getItem('hint-settings')
+    if (raw) return { ...DEFAULT_HINTS, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return DEFAULT_HINTS
+}
+
 export interface TrainSession {
   playAs: 'white' | 'black'
   mode: SelectionMode
@@ -26,9 +48,11 @@ interface StoreState {
   progress: Progress[]
   initialized: boolean
   trainSession: TrainSession | null
+  hintSettings: HintSettings
 
   init(): Promise<void>
   setTrainSession(session: TrainSession): void
+  updateHintSettings(settings: HintSettings): void
   resolveTrainOpenings(): Opening[]
 
   // Openings
@@ -54,6 +78,7 @@ export const useStore = create<StoreState>((set, get) => ({
   progress: [],
   initialized: false,
   trainSession: null,
+  hintSettings: loadHintSettings(),
 
   async init() {
     if (get().initialized) return
@@ -154,6 +179,11 @@ export const useStore = create<StoreState>((set, get) => ({
 
   setTrainSession(session) {
     set({ trainSession: session })
+  },
+
+  updateHintSettings(settings) {
+    localStorage.setItem('hint-settings', JSON.stringify(settings))
+    set({ hintSettings: settings })
   },
 
   resolveTrainOpenings() {
