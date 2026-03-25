@@ -15,7 +15,8 @@ function AppShell() {
   const init = useStore((s) => s.init)
   useEffect(() => { init() }, [init])
   const { pathname } = useLocation()
-  const isBoardRoute = pathname === '/train/board' || pathname === '/review'
+  const isBoardRoute = pathname === '/train/board'
+  const hideBottomNav = pathname === '/train/board' || pathname === '/review'
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -32,7 +33,7 @@ function AppShell() {
           <Route path="/stats" element={<StatsScreen />} />
         </Routes>
       </main>
-      {!isBoardRoute && <BottomNav />}
+      {!hideBottomNav && <BottomNav />}
     </div>
   )
 }
