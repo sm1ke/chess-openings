@@ -48,13 +48,10 @@ export function Header() {
         >
           ☰
         </button>
-        <div style={{ textAlign: 'center' }}>
-          <Link to="/" className="font-semibold no-underline" style={{ color: 'var(--chess-text)', display: 'block', lineHeight: 1.2 }}>Chess Trainer</Link>
-          {boardSubtitle && (
-            <span style={{ color: 'var(--chess-text-muted)', fontSize: 11, display: 'block', lineHeight: 1.2 }}>{boardSubtitle}</span>
-          )}
-        </div>
-        <div style={{ width: 28 }} /> {/* spacer to center title */}
+        {boardSubtitle && (
+          <span style={{ color: 'var(--chess-text-muted)', fontSize: 12 }}>{boardSubtitle}</span>
+        )}
+        <div style={{ width: 28 }} />
       </header>
 
       {open && (
