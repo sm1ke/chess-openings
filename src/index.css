@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --chess-bg: #312e2b;
+  --chess-board-dark: #779952;
+  --chess-board-light: #eeeed2;
+  --chess-sidebar: #272522;
+  --chess-panel: #1e1c1a;
+  --chess-text: #bababa;
+  --chess-text-muted: #7a7a7a;
+  --chess-accent: #81b64c;
+  --chess-border: #3d3a37;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--chess-bg);
+  color: var(--chess-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  /* Safe area for notch/home bar */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Bottom nav sits above home indicator */
+nav[data-bottom-nav] {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth scrolling in list areas */
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* Touch-friendly minimum tap target */
+button, a {
+  min-height: 36px;
+  touch-action: manipulation;
+}
+
+/* Piece drag: prevent default touch behavior interfering */
+[data-chessboard] {
+  touch-action: none;
+}
+
+/* Fade-in for overlays */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-enter {
+  animation: fadeIn 0.15s ease-out;
+}
+
+/* Success/fail overlay pulse */
+@keyframes pulse-in {
+  0%   { opacity: 0; transform: scale(1.3); }
+  60%  { opacity: 1; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.overlay-icon {
+  animation: pulse-in 0.3s ease-out;
+}
