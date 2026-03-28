@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Chessboard } from 'react-chessboard'
 import { Chess } from 'chess.js'
+import { ArrowLeft, SkipBack, ChevronLeft, ChevronRight, Play, Pause, BookOpen } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { TrainSession } from '../store/useStore'
 
@@ -155,14 +156,14 @@ export function ReviewBoardScreen() {
           background: 'var(--chess-sidebar)', padding: '10px 12px',
           display: 'flex', gap: 8,
         }}>
-          <button onClick={() => navigate(-1)} style={btnSecondary}>← Back</button>
+          <button onClick={() => navigate(-1)} style={{ ...btnSecondary, display: 'flex', alignItems: 'center', gap: 6 }}><ArrowLeft size={16} /> Back</button>
           <button
             onClick={() => setView('board')}
             style={{ ...btnSecondary, color: 'var(--chess-accent)', border: '1px solid var(--chess-accent)' }}
           >
             Step Through
           </button>
-          <button onClick={practiceOpening} style={btnPrimary}>▶ Practice</button>
+          <button onClick={practiceOpening} style={{ ...btnPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Play size={15} fill="currentColor" /> Practice</button>
         </div>
       </div>
     )
@@ -209,11 +210,11 @@ export function ReviewBoardScreen() {
             {moveIdx >= 0 && <span style={{ color: 'var(--chess-text)', marginLeft: 8 }}>{moveHistory[moveHistory.length - 1]}</span>}
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={reset} style={btnSmall()}>↩</button>
-            <button onClick={prev} disabled={moveIdx < 0} style={btnSmall()}>←</button>
-            <button onClick={next} disabled={moveIdx >= total - 1} style={btnSmall()}>→</button>
-            <button onClick={() => setAutoPlay((v) => !v)} style={btnSmall(autoPlay)}>
-              {autoPlay ? '⏸' : '▶'}
+            <button onClick={reset} style={{ ...btnSmall(), display: 'flex', alignItems: 'center' }}><SkipBack size={16} /></button>
+            <button onClick={prev} disabled={moveIdx < 0} style={{ ...btnSmall(), display: 'flex', alignItems: 'center' }}><ChevronLeft size={16} /></button>
+            <button onClick={next} disabled={moveIdx >= total - 1} style={{ ...btnSmall(), display: 'flex', alignItems: 'center' }}><ChevronRight size={16} /></button>
+            <button onClick={() => setAutoPlay((v) => !v)} style={{ ...btnSmall(autoPlay), display: 'flex', alignItems: 'center' }}>
+              {autoPlay ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
             </button>
           </div>
         </div>
@@ -231,8 +232,8 @@ export function ReviewBoardScreen() {
 
       {/* Bottom bar */}
       <div style={{ ...panelStyle, display: 'flex', gap: 8 }}>
-        <button onClick={() => setView('guide')} style={btnSecondary}>📖 Guide</button>
-        <button onClick={practiceOpening} style={btnPrimary}>▶ Practice</button>
+        <button onClick={() => setView('guide')} style={{ ...btnSecondary, display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen size={16} /> Guide</button>
+        <button onClick={practiceOpening} style={{ ...btnPrimary, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Play size={15} fill="currentColor" /> Practice</button>
       </div>
     </div>
   )
