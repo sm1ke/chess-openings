@@ -339,14 +339,14 @@ export function TrainBoardScreen() {
         )}
       </div>
 
-      {/* Progress bar */}
-      <div style={panelStyle}>
-        <p style={{ color: 'var(--chess-text-muted)', fontSize: 11, margin: 0 }}>
-          {openingIdx + 1} / {sessionOpenings.current.length} — {currentOpening?.name}
-        </p>
-        <div style={{ height: 2, background: 'var(--chess-border)', borderRadius: 1, marginTop: 6 }}>
+      {/* Progress bar — compact */}
+      <div style={{ ...panelStyle, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ color: 'var(--chess-text-muted)', fontSize: 10, flexShrink: 0 }}>
+          {openingIdx + 1}/{sessionOpenings.current.length}
+        </span>
+        <div style={{ flex: 1, height: 3, background: 'var(--chess-border)', borderRadius: 2 }}>
           <div style={{
-            height: '100%', borderRadius: 1, transition: 'width 0.4s',
+            height: '100%', borderRadius: 2, transition: 'width 0.4s',
             width: `${((openingIdx + (phase === 'complete' ? 1 : 0)) / sessionOpenings.current.length) * 100}%`,
             background: 'var(--chess-accent)',
           }} />

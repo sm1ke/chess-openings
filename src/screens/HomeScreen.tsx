@@ -136,6 +136,12 @@ export function HomeScreen() {
                 }}>
                   {f.color === 'white' ? '⬜ White' : '⬛ Black'}
                 </span>
+                <span style={{
+                  marginTop: 4, fontSize: 10, color: 'var(--chess-accent)',
+                  borderTop: '1px solid var(--chess-border)', paddingTop: 4, width: '100%', textAlign: 'center',
+                }}>
+                  Walk through →
+                </span>
               </button>
             )
           })}

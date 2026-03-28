@@ -5,8 +5,6 @@ import { Chess } from 'chess.js'
 import { useStore } from '../store/useStore'
 import type { TrainSession } from '../store/useStore'
 
-type View = 'guide' | 'board'
-
 export function ReviewBoardScreen() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -15,7 +13,8 @@ export function ReviewBoardScreen() {
   const setTrainSession = useStore((s) => s.setTrainSession)
   const opening = openings.find((o) => o.id === openingId)
 
-  const [view, setView] = useState<View>('guide')
+  // Start on guide view; switch to board when user clicks "Step Through"
+  const [view, setView] = useState<'guide' | 'board'>('guide')
   const [moveIdx, setMoveIdx] = useState(-1)
   const [autoPlay, setAutoPlay] = useState(false)
 
@@ -58,28 +57,66 @@ export function ReviewBoardScreen() {
   function next() { setMoveIdx((i) => Math.min(total - 1, i + 1)) }
   function reset() { setAutoPlay(false); setMoveIdx(-1) }
 
+  // Renders **bold** markdown, - bullet lists, ### headings
   function renderDesc(text: string) {
-    const paras = text.split(/\n\n|\n/).filter(Boolean)
-    return paras.map((para, i) => {
-      const parts = para.split(/\*\*(.+?)\*\*/g)
-      return (
-        <p key={i} style={{ margin: '0 0 12px', fontSize: 15, lineHeight: 1.7, color: 'var(--chess-text)' }}>
-          {parts.map((part, j) =>
-            j % 2 === 1
-              ? <strong key={j} style={{ color: 'var(--chess-accent)' }}>{part}</strong>
-              : part
-          )}
-        </p>
-      )
-    })
-  }
+    if (!text) return <p style={{ color: 'var(--chess-text-muted)', fontSize: 14 }}>No description yet.</p>
 
-  const stickyBar: React.CSSProperties = {
-    position: 'sticky', bottom: 0,
-    background: 'var(--chess-sidebar)',
-    borderTop: '1px solid var(--chess-border)',
-    padding: '10px 12px',
-    display: 'flex', gap: 8,
+    // Split on double or single newline
+    const paras = text.split(/\n\n+/).filter(Boolean)
+
+    return (
+      <>
+        {paras.map((para, i) => {
+          const trimmed = para.trim()
+
+          // ### heading
+          if (trimmed.startsWith('### ')) {
+            return (
+              <p key={i} style={{ color: 'var(--chess-accent)', fontSize: 13, fontWeight: 700, margin: '16px 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {trimmed.slice(4)}
+              </p>
+            )
+          }
+
+          // Render inline bold: **text**
+          function renderInline(s: string) {
+            const parts = s.split(/\*\*([^*]+)\*\*/g)
+            return parts.map((part, j) =>
+              j % 2 === 1
+                ? <strong key={j} style={{ color: 'var(--chess-accent)', fontWeight: 700 }}>{part}</strong>
+                : part
+            )
+          }
+
+          // Bullet list — lines starting with "- "
+          const lines = trimmed.split('\n')
+          const isBulletBlock = lines.every((l) => l.trim().startsWith('- ') || l.trim() === '')
+          if (isBulletBlock && lines.some((l) => l.trim().startsWith('- '))) {
+            return (
+              <ul key={i} style={{ margin: '0 0 12px', paddingLeft: 20, color: 'var(--chess-text)' }}>
+                {lines.filter((l) => l.trim().startsWith('- ')).map((l, j) => (
+                  <li key={j} style={{ fontSize: 14, lineHeight: 1.7, marginBottom: 2 }}>
+                    {renderInline(l.trim().slice(2))}
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+
+          // Regular paragraph (may have embedded newlines — render each line)
+          return (
+            <p key={i} style={{ margin: '0 0 14px', fontSize: 14, lineHeight: 1.8, color: 'var(--chess-text)' }}>
+              {lines.map((line, j) => (
+                <span key={j}>
+                  {j > 0 && <br />}
+                  {renderInline(line)}
+                </span>
+              ))}
+            </p>
+          )
+        })}
+      </>
+    )
   }
 
   const btnSecondary: React.CSSProperties = {
@@ -94,32 +131,36 @@ export function ReviewBoardScreen() {
     padding: '10px 14px', fontSize: 14, fontWeight: 600,
   }
 
-  // ── GUIDE VIEW ──────────────────────────────────────────────────────────────
+  // ── GUIDE VIEW (full-screen) ────────────────────────────────────────────────
   if (view === 'guide') {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-        {/* Opening name */}
-        <div style={{ padding: '16px 16px 4px' }}>
-          <p style={{ color: 'var(--chess-text-muted)', fontSize: 11, margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>Opening Guide</p>
-          <p style={{ color: 'var(--chess-text)', fontSize: 18, fontWeight: 700, margin: '4px 0 0' }}>{opening.name}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        {/* Header strip */}
+        <div style={{ padding: '14px 16px 10px', flexShrink: 0, borderBottom: '1px solid var(--chess-border)', background: 'var(--chess-sidebar)' }}>
+          <p style={{ color: 'var(--chess-text-muted)', fontSize: 10, margin: 0, textTransform: 'uppercase', letterSpacing: 1 }}>Opening Guide</p>
+          <p style={{ color: 'var(--chess-text)', fontSize: 17, fontWeight: 700, margin: '3px 0 0' }}>{opening.name}</p>
           <p style={{ color: 'var(--chess-text-muted)', fontSize: 12, margin: '2px 0 0' }}>
-            Playing as {opening.color}
+            Playing as {opening.color} · {opening.moves.length} moves
           </p>
         </div>
 
-        {/* Description */}
-        <div style={{ flex: 1, padding: '16px 16px 0', overflowY: 'auto' }}>
-          {opening.description
-            ? renderDesc(opening.description)
-            : <p style={{ color: 'var(--chess-text-muted)', fontSize: 14 }}>No description yet.</p>
-          }
+        {/* Scrollable description */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+          {renderDesc(opening.description ?? '')}
         </div>
 
         {/* Sticky action bar */}
-        <div style={stickyBar}>
+        <div style={{
+          flexShrink: 0, borderTop: '1px solid var(--chess-border)',
+          background: 'var(--chess-sidebar)', padding: '10px 12px',
+          display: 'flex', gap: 8,
+        }}>
           <button onClick={() => navigate(-1)} style={btnSecondary}>← Back</button>
-          <button onClick={() => setView('board')} style={{ ...btnSecondary, color: 'var(--chess-accent)' }}>
-            Step Through Moves
+          <button
+            onClick={() => setView('board')}
+            style={{ ...btnSecondary, color: 'var(--chess-accent)', border: '1px solid var(--chess-accent)' }}
+          >
+            Step Through
           </button>
           <button onClick={practiceOpening} style={btnPrimary}>▶ Practice</button>
         </div>
@@ -127,11 +168,12 @@ export function ReviewBoardScreen() {
     )
   }
 
-  // ── BOARD VIEW ───────────────────────────────────────────────────────────────
+  // ── BOARD VIEW ────────────────────────────────────────────────────────────
   const panelStyle: React.CSSProperties = {
     background: 'var(--chess-sidebar)',
     borderTop: '1px solid var(--chess-border)',
     padding: '10px 12px',
+    flexShrink: 0,
   }
 
   const btnSmall = (active = false): React.CSSProperties => ({
@@ -144,7 +186,7 @@ export function ReviewBoardScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Board */}
-      <div style={{ width: 'min(100%, calc(100svh - 230px))', alignSelf: 'center', flexShrink: 0 }}>
+      <div style={{ width: 'min(100%, calc(100svh - 200px))', alignSelf: 'center', flexShrink: 0 }}>
         <Chessboard
           options={{
             position: currentFen,
