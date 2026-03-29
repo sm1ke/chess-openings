@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Opening, OpeningSet, Progress, Tag } from '../types'
+import type { Opening, OpeningSet, Progress, Tag, OpponentLevel } from '../types'
 import type { StorageAdapter } from '../storage/StorageAdapter'
 import { LocalStorageAdapter } from '../storage/LocalStorageAdapter'
 import { getPreloadedOpenings } from '../data/preloadedOpenings'
@@ -28,6 +28,14 @@ function loadHintSettings(): HintSettings {
   return DEFAULT_HINTS
 }
 
+function loadOpponentLevel(): OpponentLevel {
+  try {
+    const raw = localStorage.getItem('opponent-level')
+    if (raw) return raw as OpponentLevel
+  } catch { /* ignore */ }
+  return 'intermediate'
+}
+
 export interface TrainSession {
   playAs: 'white' | 'black'
   mode: SelectionMode
@@ -49,10 +57,12 @@ interface StoreState {
   initialized: boolean
   trainSession: TrainSession | null
   hintSettings: HintSettings
+  opponentLevel: OpponentLevel
 
   init(): Promise<void>
   setTrainSession(session: TrainSession): void
   updateHintSettings(settings: HintSettings): void
+  updateOpponentLevel(level: OpponentLevel): void
   resolveTrainOpenings(): Opening[]
 
   // Openings
@@ -79,6 +89,7 @@ export const useStore = create<StoreState>((set, get) => ({
   initialized: false,
   trainSession: null,
   hintSettings: loadHintSettings(),
+  opponentLevel: loadOpponentLevel(),
 
   async init() {
     if (get().initialized) return
@@ -184,6 +195,11 @@ export const useStore = create<StoreState>((set, get) => ({
   updateHintSettings(settings) {
     localStorage.setItem('hint-settings', JSON.stringify(settings))
     set({ hintSettings: settings })
+  },
+
+  updateOpponentLevel(level) {
+    localStorage.setItem('opponent-level', level)
+    set({ opponentLevel: level })
   },
 
   resolveTrainOpenings() {

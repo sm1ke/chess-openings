@@ -1,5 +1,16 @@
 export type Tag = 'standard' | 'gambit' | 'trick' | 'system'
 
+export type OpponentLevel = 'stockfish' | 'advanced' | 'intermediate' | 'beginner'
+
+export interface Inaccuracy {
+  moves: string[]           // SAN sequence up to and including bad move
+  badMove: string           // last element of moves
+  level: 'beginner' | 'intermediate' | 'advanced'
+  explanation: string
+  punishment: string        // text description
+  punishmentMoves: string[] // SAN of correct reply move(s)
+}
+
 export interface Opening {
   id: string
   name: string
@@ -8,6 +19,7 @@ export interface Opening {
   tags: Tag[]
   moves: string[]
   description?: string
+  inaccuracies?: Inaccuracy[]
 }
 
 export interface OpeningSet {

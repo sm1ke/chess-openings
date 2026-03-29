@@ -1,5 +1,6 @@
 import { useStore } from '../store/useStore'
 import type { HintSettings } from '../store/useStore'
+import type { OpponentLevel } from '../types'
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -49,9 +50,18 @@ function SecondsPicker({ value, onChange, min = 1, max = 60 }: { value: number; 
   )
 }
 
+const LEVELS: { value: OpponentLevel; label: string; desc: string }[] = [
+  { value: 'stockfish', label: 'Stockfish', desc: 'Always plays mainline theory, no mistakes' },
+  { value: 'advanced', label: 'Advanced', desc: '~10% chance of inaccuracy when available' },
+  { value: 'intermediate', label: 'Intermediate', desc: '~30% chance of inaccuracy' },
+  { value: 'beginner', label: 'Beginner', desc: '~60% chance of inaccuracy' },
+]
+
 export function SettingsScreen() {
   const hints = useStore((s) => s.hintSettings)
   const update = useStore((s) => s.updateHintSettings)
+  const opponentLevel = useStore((s) => s.opponentLevel)
+  const updateOpponentLevel = useStore((s) => s.updateOpponentLevel)
 
   function patch(partial: Partial<HintSettings>) {
     update({ ...hints, ...partial })
@@ -64,6 +74,29 @@ export function SettingsScreen() {
 
   return (
     <div className="flex flex-col pb-8">
+      <p style={sectionLabel}>Opponent Strength</p>
+      <div style={{ background: 'var(--chess-sidebar)', borderTop: '1px solid var(--chess-border)' }}>
+        {LEVELS.map((l) => (
+          <button
+            key={l.value}
+            onClick={() => updateOpponentLevel(l.value)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px', background: 'none', border: 'none', borderBottom: '1px solid var(--chess-border)',
+              cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <div>
+              <div style={{ color: 'var(--chess-text)', fontSize: 14, fontWeight: opponentLevel === l.value ? 600 : 400 }}>{l.label}</div>
+              <div style={{ color: 'var(--chess-text-muted)', fontSize: 12, marginTop: 2 }}>{l.desc}</div>
+            </div>
+            {opponentLevel === l.value && (
+              <span style={{ color: 'var(--chess-accent)', fontSize: 16 }}>✓</span>
+            )}
+          </button>
+        ))}
+      </div>
+
       <p style={sectionLabel}>Square Highlight Hint</p>
       <div style={{ background: 'var(--chess-sidebar)', borderTop: '1px solid var(--chess-border)' }}>
         <Row label="Show square hint">

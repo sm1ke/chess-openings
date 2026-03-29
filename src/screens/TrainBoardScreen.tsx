@@ -4,13 +4,42 @@ import { Chessboard } from 'react-chessboard'
 import { Chess } from 'chess.js'
 import { useStore } from '../store/useStore'
 import { buildOpeningTree } from '../utils/buildOpeningTree'
-import type { Opening } from '../types'
+import type { Opening, Inaccuracy } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Arrow = { startSquare: string; endSquare: string; color: string }
 type PieceDropHandlerArgs = { piece: unknown; sourceSquare: string; targetSquare: string | null }
 type SquareHandlerArgs = { piece: unknown; square: string }
 
-type Phase = 'playing' | 'wrong' | 'complete' | 'alldone'
+type Phase = 'playing' | 'wrong' | 'complete' | 'alldone' | 'inaccuracy' | 'inaccuracy-wrong'
+
+// Probability of inaccuracy play by level
+const INACCURACY_PROB: Record<string, number> = {
+  stockfish: 0,
+  advanced: 0.10,
+  intermediate: 0.30,
+  beginner: 0.60,
+}
+
+// Build map: FEN-before-bad-move → Inaccuracy[]
+function buildInaccuracyMap(openings: Opening[]): Map<string, Inaccuracy[]> {
+  const map = new Map<string, Inaccuracy[]>()
+  for (const opening of openings) {
+    for (const inac of opening.inaccuracies ?? []) {
+      const chess = new Chess()
+      // replay all moves except the last (bad move)
+      const preMoves = inac.moves.slice(0, -1)
+      let valid = true
+      for (const san of preMoves) {
+        try { chess.move(san) } catch { valid = false; break }
+      }
+      if (!valid) continue
+      const fen = chess.fen()
+      const existing = map.get(fen) ?? []
+      map.set(fen, [...existing, inac])
+    }
+  }
+  return map
+}
 
 export function TrainBoardScreen() {
   const navigate = useNavigate()
@@ -18,16 +47,17 @@ export function TrainBoardScreen() {
   const resolveTrainOpenings = useStore((s) => s.resolveTrainOpenings)
   const recordAttempt = useStore((s) => s.recordAttempt)
   const hintSettings = useStore((s) => s.hintSettings)
+  const opponentLevel = useStore((s) => s.opponentLevel)
 
   const sessionOpenings = useRef<Opening[]>([])
   const tree = useRef<Map<string, string[]>>(new Map())
+  const inaccuracyMap = useRef<Map<string, Inaccuracy[]>>(new Map())
 
   const [openingIdx, setOpeningIdx] = useState(0)
   const [chess] = useState(() => new Chess())
   const [fen, setFen] = useState(chess.fen())
   const [phase, setPhase] = useState<Phase>('playing')
 
-  // Board sizing refs (kept for potential future use)
   const outerRef = useRef<HTMLDivElement>(null)
   const boardWrapRef = useRef<HTMLDivElement>(null)
   const [wrongInfo, setWrongInfo] = useState<{ played: string; correct: string[] } | null>(null)
@@ -38,6 +68,8 @@ export function TrainBoardScreen() {
   const arrowHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const furthestMove = useRef(0)
   const selectedSq = useRef<string | null>(null)
+  const [activeInaccuracy, setActiveInaccuracy] = useState<Inaccuracy | null>(null)
+  const [inaccuracyBadSq, setInaccuracyBadSq] = useState<string | null>(null)
 
   const playAs = trainSession?.playAs ?? 'white'
 
@@ -47,6 +79,7 @@ export function TrainBoardScreen() {
     if (openings.length === 0) { navigate('/train'); return }
     sessionOpenings.current = openings
     tree.current = buildOpeningTree(openings)
+    inaccuracyMap.current = buildInaccuracyMap(openings)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentOpening = sessionOpenings.current[openingIdx]
@@ -59,6 +92,8 @@ export function TrainBoardScreen() {
     setLastMove(null)
     setHintMoves([])
     setHintArrows([])
+    setActiveInaccuracy(null)
+    setInaccuracyBadSq(null)
     furthestMove.current = 0
     selectedSq.current = null
     if (hintTimer.current) clearTimeout(hintTimer.current)
@@ -67,7 +102,7 @@ export function TrainBoardScreen() {
 
   useEffect(() => { resetBoard() }, [openingIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-play opponent move
+  // Auto-play opponent move (with optional inaccuracy injection)
   useEffect(() => {
     if (phase !== 'playing') return
     const isMyTurn = chess.turn() === (playAs === 'white' ? 'w' : 'b')
@@ -76,13 +111,28 @@ export function TrainBoardScreen() {
     const validMoves = tree.current.get(chess.fen()) ?? []
     if (validMoves.length === 0) { handleComplete(); return }
 
-    const pick = validMoves[Math.floor(Math.random() * validMoves.length)]
+    // Check if we should play an inaccuracy
+    const prob = INACCURACY_PROB[opponentLevel] ?? 0
+    const availableInaccuracies = inaccuracyMap.current.get(chess.fen()) ?? []
+    const shouldPlayInaccuracy = prob > 0 && availableInaccuracies.length > 0 && Math.random() < prob
+
+    const pick = shouldPlayInaccuracy
+      ? availableInaccuracies[Math.floor(Math.random() * availableInaccuracies.length)]
+      : null
+
+    const moveSan = pick ? pick.badMove : validMoves[Math.floor(Math.random() * validMoves.length)]
+
     const timeout = setTimeout(() => {
-      const result = chess.move(pick)
+      const result = chess.move(moveSan)
       if (result) {
         furthestMove.current = chess.history().length
         setLastMove({ from: result.from, to: result.to })
         setFen(chess.fen())
+        if (pick) {
+          setActiveInaccuracy(pick)
+          setInaccuracyBadSq(result.to)
+          setPhase('inaccuracy')
+        }
       }
     }, 350)
     return () => clearTimeout(timeout)
@@ -130,7 +180,7 @@ export function TrainBoardScreen() {
   }
 
   function applyUserMove(from: string, to: string, promotion = 'q'): boolean {
-    if (phase !== 'playing') return false
+    if (phase !== 'playing' && phase !== 'inaccuracy') return false
     const isMyTurn = chess.turn() === (playAs === 'white' ? 'w' : 'b')
     if (!isMyTurn) return false
 
@@ -138,6 +188,33 @@ export function TrainBoardScreen() {
     let result
     try { result = tmp.move({ from, to, promotion }) } catch { return false }
     if (!result) return false
+
+    if (phase === 'inaccuracy' && activeInaccuracy) {
+      // Validate punishment move
+      const pMoves = activeInaccuracy.punishmentMoves
+      const isCorrect = pMoves.length === 0 || pMoves.some((pm) => {
+        // match by SAN (strip ! and ?)
+        const cleanPm = pm.replace(/[!?]/g, '')
+        const cleanSan = result!.san.replace(/[!?]/g, '')
+        return cleanSan === cleanPm
+      })
+
+      chess.move(result.san)
+      furthestMove.current = chess.history().length
+      setLastMove({ from: result.from, to: result.to })
+      setFen(chess.fen())
+      setHintMoves([])
+      setHintArrows([])
+
+      if (isCorrect) {
+        setInaccuracyBadSq(null)
+        setActiveInaccuracy(null)
+        setPhase('playing')
+      } else {
+        setPhase('inaccuracy-wrong')
+      }
+      return true
+    }
 
     const validMoves = tree.current.get(chess.fen()) ?? []
 
@@ -150,7 +227,6 @@ export function TrainBoardScreen() {
       setHintArrows([])
       if (hintTimer.current) clearTimeout(hintTimer.current)
       if (arrowHintTimer.current) clearTimeout(arrowHintTimer.current)
-      // Check if complete (no more user continuations after opponent's upcoming move)
       return true
     } else {
       setPhase('wrong')
@@ -167,7 +243,7 @@ export function TrainBoardScreen() {
   }
 
   function handleSquareClick({ square }: SquareHandlerArgs) {
-    if (phase !== 'playing') return
+    if (phase !== 'playing' && phase !== 'inaccuracy') return
     const isMyTurn = chess.turn() === (playAs === 'white' ? 'w' : 'b')
     if (!isMyTurn) return
 
@@ -175,7 +251,6 @@ export function TrainBoardScreen() {
       const moved = applyUserMove(selectedSq.current, square)
       selectedSq.current = null
       if (!moved) {
-        // Maybe re-select if clicking own piece
         const piece = chess.get(square as Parameters<typeof chess.get>[0])
         if (piece && piece.color === (playAs === 'white' ? 'w' : 'b')) {
           selectedSq.current = square
@@ -195,12 +270,21 @@ export function TrainBoardScreen() {
     else setOpeningIdx(next)
   }
 
+  function dismissInaccuracy() {
+    setActiveInaccuracy(null)
+    setInaccuracyBadSq(null)
+    setPhase('playing')
+  }
+
   // Square styles
   const squareStyles: Record<string, React.CSSProperties> = {}
   if (lastMove && phase !== 'wrong') {
     const hl: React.CSSProperties = { backgroundColor: 'rgba(130,184,76,0.4)' }
     squareStyles[lastMove.from] = hl
     squareStyles[lastMove.to] = hl
+  }
+  if (inaccuracyBadSq && (phase === 'inaccuracy' || phase === 'inaccuracy-wrong')) {
+    squareStyles[inaccuracyBadSq] = { backgroundColor: 'rgba(231,76,60,0.55)', boxShadow: 'inset 0 0 0 3px rgba(231,76,60,0.9)' }
   }
   if (hintMoves.length > 0 && phase === 'playing') {
     const tmp = new Chess(chess.fen())
@@ -209,7 +293,7 @@ export function TrainBoardScreen() {
     }
   }
 
-  // Arrows: wrong-move correct answers + hint arrows
+  // Arrows
   const arrows: Arrow[] = []
   if (phase === 'wrong' && wrongInfo) {
     const tmp = new Chess(chess.fen())
@@ -218,6 +302,17 @@ export function TrainBoardScreen() {
         const m = tmp.move(san)
         if (m) { arrows.push({ startSquare: m.from, endSquare: m.to, color: '#82b84c' }); tmp.undo() }
       } catch { /* skip */ }
+    }
+  } else if ((phase === 'inaccuracy' || phase === 'inaccuracy-wrong') && activeInaccuracy) {
+    // Show arrows for punishment moves
+    const tmp = new Chess(chess.fen())
+    if (phase === 'inaccuracy-wrong') {
+      for (const pm of activeInaccuracy.punishmentMoves) {
+        try {
+          const m = tmp.move(pm)
+          if (m) { arrows.push({ startSquare: m.from, endSquare: m.to, color: '#82b84c' }); tmp.undo() }
+        } catch { /* skip */ }
+      }
     }
   } else if (phase === 'playing' && hintArrows.length > 0) {
     arrows.push(...hintArrows)
@@ -256,7 +351,7 @@ export function TrainBoardScreen() {
 
   return (
     <div ref={outerRef} className="flex flex-col" style={{ overflow: 'hidden' }}>
-      {/* Board — constrained to fit within viewport height */}
+      {/* Board */}
       <div ref={boardWrapRef} style={{ position: 'relative', width: 'min(100%, calc(100svh - 200px))', alignSelf: 'center', flexShrink: 0 }}>
         <Chessboard
           options={{
@@ -270,7 +365,7 @@ export function TrainBoardScreen() {
             darkSquareStyle: { backgroundColor: '#779952' },
             lightSquareStyle: { backgroundColor: '#eeeed2' },
             animationDurationInMs: 150,
-            allowDragging: phase === 'playing',
+            allowDragging: phase === 'playing' || phase === 'inaccuracy',
             allowDrawingArrows: false,
           }}
         />
@@ -303,6 +398,38 @@ export function TrainBoardScreen() {
                   </span>
                 ))}
               </div>
+        )}
+
+        {(phase === 'inaccuracy' || phase === 'inaccuracy-wrong') && activeInaccuracy && (
+          <div className="flex flex-col gap-2">
+            <p style={{ color: '#e67e22', fontSize: 13, margin: 0, fontWeight: 600 }}>
+              ⚠ Opponent inaccuracy — {activeInaccuracy.badMove}
+            </p>
+            <p style={{ color: 'var(--chess-text)', fontSize: 12, margin: 0 }}>
+              {activeInaccuracy.explanation}
+            </p>
+            {phase === 'inaccuracy' && (
+              <p style={{ color: 'var(--chess-accent)', fontSize: 12, margin: 0, fontStyle: 'italic' }}>
+                Find the best punishing reply!
+              </p>
+            )}
+            {phase === 'inaccuracy-wrong' && (
+              <>
+                <p style={{ color: '#e74c3c', fontSize: 12, margin: 0 }}>
+                  Not the best — correct: {activeInaccuracy.punishmentMoves.join(', ')}
+                </p>
+                <p style={{ color: 'var(--chess-text-muted)', fontSize: 12, margin: 0 }}>
+                  {activeInaccuracy.punishment}
+                </p>
+                <button onClick={dismissInaccuracy} style={{
+                  border: 'none', borderRadius: 4, cursor: 'pointer', marginTop: 2,
+                  background: 'var(--chess-accent)', color: '#fff', padding: '6px', fontSize: 13,
+                }}>
+                  Continue
+                </button>
+              </>
+            )}
+          </div>
         )}
 
         {phase === 'wrong' && wrongInfo && (
@@ -339,7 +466,7 @@ export function TrainBoardScreen() {
         )}
       </div>
 
-      {/* Progress bar — compact */}
+      {/* Progress bar */}
       <div style={{ ...panelStyle, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ color: 'var(--chess-text-muted)', fontSize: 10, flexShrink: 0 }}>
           {openingIdx + 1}/{sessionOpenings.current.length}
